@@ -95,6 +95,19 @@ const supplyApyBps = Math.floor((borrowApyBps * utilBps) / 10000);
   }
 }
 
+// ─── Zest v2 availability probe (SC c56 pattern) ─────────────────────────────
+// Probes /v2/contracts/interface/{deployer}/pool-read-supply — 200=live, 404=dev-only
+async function checkV2Available(apiUrl: string): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `${apiUrl}/v2/contracts/interface/${ZEST_POOL_CONTRACT}/${ZEST_V2_SUPPLY_READ}`
+    );
+    return res.status === 200;
+  } catch {
+    return false;
+  }
+}
+
 // ─── Zest v2 pool read ────────────────────────────────────────────────────────
 // v2 uses separate read-only contracts for supply data and liquidation thresholds.
 // Key differences from v1:
