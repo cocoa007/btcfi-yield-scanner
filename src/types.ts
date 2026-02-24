@@ -24,6 +24,7 @@ export interface YieldComparison {
   timestamp: number;
   paths: YieldPath[];
   recommended: YieldPath;
+  zestV2Ready: boolean; // SC c56: feature flag — true when pool-read-supply is live on mainnet
 }
 
 export interface KeeperAlert {
