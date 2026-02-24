@@ -2,8 +2,10 @@ const SBTC_PRINCIPAL = "SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token";
 
 // ─── Zest Protocol contracts ─────────────────────────────────────────────────
 // v1 (legacy) — pool-borrow + liquidation-manager
-const ZEST_POOL_CONTRACT = "SP4SZE494VC2YC5JYG7AYFQ44F5Q4PYV7DVMDPBG";
-const ZEST_POOL_NAME = "pool-borrow";
+// v1 deployer was SP4SZE494VC2YC5JYG7AYFQ44F5Q4PYV7DVMDPBG
+// v2 confirmed live: SP2VCQJGH7PHP2DJK7Z0V48AGBHQAW3R3ZW1QF4N.pool-borrow-v2-3
+const ZEST_POOL_CONTRACT = "SP2VCQJGH7PHP2DJK7Z0V48AGBHQAW3R3ZW1QF4N";
+const ZEST_POOL_NAME = "pool-borrow-v2-3";
 
 // v2 (launched Feb 2026) — new reserve vault, updated interest rate model
 // Pool reads use pool-0-reserve-v2-0 for vault data, pool-read-supply for supply stats
