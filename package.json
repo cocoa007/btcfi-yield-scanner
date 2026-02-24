@@ -1,0 +1,20 @@
+{
+  "name": "btcfi-yield-scanner",
+  "version": "0.1.0",
+  "description": "Bitcoin DeFi yield scanner + portfolio risk scoring for Stacks",
+  "type": "module",
+  "scripts": {
+    "scan": "bun run src/yield-scanner.ts",
+    "read-pools": "bun run src/pool-reader.ts",
+    "keeper": "bun run src/keeper.ts"
+  },
+  "dependencies": {
+    "@stacks/transactions": "^7.0.0",
+    "@stacks/network": "^7.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/bun": "^1.0.0"
+  },
+  "license": "MIT"
+}
