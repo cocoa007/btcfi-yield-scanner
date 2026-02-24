@@ -1,5 +1,17 @@
 const SBTC_PRINCIPAL = "SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token";
 
+// ─── Zest Protocol contracts ─────────────────────────────────────────────────
+// v1 (legacy) — pool-borrow + liquidation-manager
+const ZEST_POOL_CONTRACT = "SP4SZE494VC2YC5JYG7AYFQ44F5Q4PYV7DVMDPBG";
+const ZEST_POOL_NAME = "pool-borrow";
+
+// v2 (launched Feb 2026) — new reserve vault, updated interest rate model
+// Pool reads use pool-0-reserve-v2-0 for vault data, pool-read-supply for supply stats
+const ZEST_V2_VAULT = "pool-0-reserve-v2-0";
+const ZEST_V2_SUPPLY_READ = "pool-read-supply";
+const ZEST_V2_LIQUIDATION_READ = "pool-read-liquidation";
+const ZEST_REWARDS = "rewards-v8";
+
 const ALEX_CONTRACT = "SP102V8P0F7JX67ARQ77WEA3D3CFB5XW39REDT0AM";
 const ALEX_POOL_NAME = "amm-pool-v2-01";
 // ALEX sBTC/STX pool factor — from FB (c7): token-x=STX, token-y=sBTC, factor=100000000
@@ -81,6 +93,99 @@ const supplyApyBps = Math.floor((borrowApyBps * utilBps) / 10000);
   } catch {
     return null;
   }
+}
+
+// ─── Zest v2 pool read ────────────────────────────────────────────────────────
+// v2 uses separate read-only contracts for supply data and liquidation thresholds.
+// Key differences from v1:
+// - pool-read-supply: get-supply-balance, get-supply-rate (replaces get-reserve-state)
+// - pool-0-reserve-v2-0: updated vault with e-mode support
+// - rewards-v8: separate reward distribution (sBTC + STX rewards)
+// - Interest rate model: variable rate with kink (optimal util ~80%)
+
+async function readZestV2Pool(apiUrl: string): Promise<{
+  apy_bps: number;
+  utilization_pct: number;
+  reserves_sats: number;
+  rewards_apy_bps: number;
+  version: "v2";
+} | null> {
+  try {
+    const [addr, name] = SBTC_PRINCIPAL.split(".");
+    const principalArg = "0x" + Buffer.from(serializeCV(contractPrincipalCV(addr, name))).toString("hex");
+
+    // Try v2 supply read first
+    const supplyResult = await callReadOnly(
+      apiUrl,
+      ZEST_POOL_CONTRACT,
+      ZEST_V2_SUPPLY_READ,
+      "get-supply-balance",
+      [principalArg]
+    );
+
+    if (!supplyResult.okay) {
+      // v2 not available, fall back to v1
+      return null;
+    }
+
+    const hexResult = supplyResult.result;
+    const totalSupply = extractUintFromClarityTuple(hexResult, "total-supply") ?? 0;
+    const totalBorrow = extractUintFromClarityTuple(hexResult, "total-borrows") ?? 0;
+    const availableLiquidity = extractUintFromClarityTuple(hexResult, "available-liquidity") ?? 0;
+
+    const totalDeposited = availableLiquidity + totalBorrow;
+    const utilBps = totalDeposited > 0 ? Math.floor((totalBorrow * 10000) / totalDeposited) : 0;
+    const utilPct = utilBps / 100;
+
+    // v2 interest rate model: base 2% + slope1 4% (up to 80% util) + slope2 75% (above 80%)
+    const OPTIMAL_UTIL = 8000; // 80% in bps
+    const BASE_RATE = 200;     // 2%
+    const SLOPE1 = 400;        // 4%
+    const SLOPE2 = 7500;       // 75%
+
+    let borrowApyBps: number;
+    if (utilBps <= OPTIMAL_UTIL) {
+      borrowApyBps = BASE_RATE + Math.floor((SLOPE1 * utilBps) / OPTIMAL_UTIL);
+    } else {
+      borrowApyBps = BASE_RATE + SLOPE1 + Math.floor((SLOPE2 * (utilBps - OPTIMAL_UTIL)) / (10000 - OPTIMAL_UTIL));
+    }
+    const supplyApyBps = Math.floor((borrowApyBps * utilBps) / 10000);
+
+    // Check rewards-v8 for additional sBTC/STX incentives
+    // This is separate from lending APY — Zest distributes protocol rewards
+    let rewardsApyBps = 0;
+    try {
+      const rewardsResult = await callReadOnly(
+        apiUrl,
+        ZEST_POOL_CONTRACT,
+        ZEST_REWARDS,
+        "get-reward-rate",
+        [principalArg]
+      );
+      if (rewardsResult.okay) {
+        rewardsApyBps = extractUintFromClarityTuple(rewardsResult.result, "rate") ?? 0;
+      }
+    } catch {
+      // rewards read is optional — protocol may not have active reward epoch
+    }
+
+    return {
+      apy_bps: supplyApyBps + rewardsApyBps,
+      utilization_pct: utilPct,
+      reserves_sats: Math.floor(totalDeposited / 100),
+      rewards_apy_bps: rewardsApyBps,
+      version: "v2",
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Helper: try v2 first, fall back to v1
+async function readZestBestAvailable(apiUrl: string) {
+  const v2 = await readZestV2Pool(apiUrl);
+  if (v2) return v2;
+  return readZestPool(apiUrl);
 }
 
 // ─── ALEX pool read ───────────────────────────────────────────────────────────

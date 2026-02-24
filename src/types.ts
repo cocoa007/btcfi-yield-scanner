@@ -1,12 +1,13 @@
 // Shared types for btcfi-yield-scanner
 
 export interface PoolState {
-  protocol: "zest" | "alex" | "bitflow";
+  protocol: "zest" | "zest-v2" | "alex" | "bitflow";
   totalSupply: bigint;
   totalBorrow: bigint;
   utilizationRate: number;
   supplyAPY: number;
   borrowAPY: number;
+  rewardsAPY?: number; // Zest v2: separate reward distribution
   lastUpdated: number;
 }
 

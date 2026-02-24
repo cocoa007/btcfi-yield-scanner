@@ -19,7 +19,8 @@ src/
 
 | Path | Protocol | Asset | Est. APY | Risk |
 |------|----------|-------|----------|------|
-| PATH_A | Zest Protocol | sBTC supply | ~5% | Low |
+| PATH_A | Zest Protocol v2 | sBTC supply + rewards | ~5-8% | Low |
+| PATH_A1 | Zest Protocol v1 (legacy) | sBTC supply | ~5% | Low |
 | PATH_B | ALEX AMM | sBTC/STX LP | ~3.5% | Medium (IL) |
 | PATH_C | Bitflow | sBTC pools | ~2.8% | Low-Medium |
 | PATH_D | Hold | BTC/sBTC | 0% | Baseline |
@@ -27,7 +28,9 @@ src/
 ## How It Works
 
 - **pool-reader.ts** reads contract state directly via Stacks API (no indexer dependency)
-  - Zest: `SP4SZE494VC2YC5JYG7AYFQ44F5Q4PYV7DVMDPBG.pool-borrow` → `get-reserve-state`
+  - Zest v2: `SP4SZE494VC2YC5JYG7AYFQ44F5Q4PYV7DVMDPBG.pool-read-supply` → supply balance + rates
+  - Zest v2 rewards: `SP4SZE494VC2YC5JYG7AYFQ44F5Q4PYV7DVMDPBG.rewards-v8` → sBTC/STX reward rates
+  - Zest v1 (fallback): `SP4SZE494VC2YC5JYG7AYFQ44F5Q4PYV7DVMDPBG.pool-borrow` → `get-reserve-state`
   - ALEX: `SP102V8P0F7JX67ARQ77WEA3D3CFB5XW39REDT0AM.amm-pool-v2-01` → `get-pool-details`
 - **yield-scanner.ts** normalizes APYs, compares paths, scores risk
 - **keeper.ts** monitors Zest utilization rates and circuit breaker conditions
