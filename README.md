@@ -33,5 +33,5 @@ src/
 | PATH_D | Hold | BTC/sBTC | 0% | Baseline |
 
 **Live APY:** `pool-reader.ts` reads contracts directly via Stacks API (deployed CF Worker has unrestricted access):
-- Zest: `SP4SZE494VC2YC5JYG7AYFQ44F5Q4PYV7DVMDPBG.pool-borrow` → `get-reserve-state(sBTC principal)`
+- Zest: `SP2VCQJGH7PHP2DJK7Z0V48AGBHQAW3R3ZW1QF4N.pool-borrow-v2-3` → `get-reserve-state(sBTC principal)`
 - ALEX: `SP102V8P0F7JX67ARQ77WEA3D3CFB5XW39REDT0AM.amm-pool-v2-01` → `get-pool-details`

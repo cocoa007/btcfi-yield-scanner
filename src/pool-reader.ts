@@ -1,4 +1,16 @@
+import {
+  serializeCV,
+  contractPrincipalCV,
+  uintCV,
+  hexToCV,
+  cvToValue,
+} from "@stacks/transactions";
+
 const SBTC_PRINCIPAL = "SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token";
+
+// Zest Protocol pool-borrow contract (confirmed via get-reserve-state on Hiro API)
+const ZEST_POOL_CONTRACT = "SP2VCQJGH7PHP2DJK7Z0V48AGBHQAW3R3ZW1QF4N";
+const ZEST_POOL_NAME = "pool-borrow-v2-3";
 
 const ALEX_CONTRACT = "SP102V8P0F7JX67ARQ77WEA3D3CFB5XW39REDT0AM";
 const ALEX_POOL_NAME = "amm-pool-v2-01";
