@@ -129,12 +129,13 @@ async function readZestV2Pool(apiUrl: string): Promise<{
     const [addr, name] = SBTC_PRINCIPAL.split(".");
     const principalArg = "0x" + Buffer.from(serializeCV(contractPrincipalCV(addr, name))).toString("hex");
 
-    // Try v2 supply read first
+    // Try v2 supply read first — uses get-asset-supply-apy for direct APY
+    // and get-reserve-data for utilization/liquidity breakdown
     const supplyResult = await callReadOnly(
       apiUrl,
       ZEST_POOL_CONTRACT,
       ZEST_V2_SUPPLY_READ,
-      "get-supply-balance",
+      "get-reserve-data",
       [principalArg]
     );
 
