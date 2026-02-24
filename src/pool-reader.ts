@@ -12,7 +12,15 @@ const ZEST_POOL_NAME = "pool-borrow-v2-3";
 const ZEST_V2_VAULT = "pool-0-reserve-v2-0";
 const ZEST_V2_SUPPLY_READ = "pool-read-supply";
 const ZEST_V2_LIQUIDATION_READ = "pool-read-liquidation";
+// rewards-v8 lives on the OLD deployer address
+const ZEST_REWARDS_CONTRACT = "SP4SZE494VC2YC5JYG7AYFQ44F5Q4PYV7DVMDPBG";
 const ZEST_REWARDS = "rewards-v8";
+
+// Key v2 read functions (from pool-read-supply interface):
+// - get-reserve-data(asset) → full reserve state
+// - get-asset-supply-apy(reserve) → supply APY
+// - get-supplied-balance-ststx() → total ststx supplied
+// - get-user-reserve-data(who, asset) → per-user state
 
 const ALEX_CONTRACT = "SP102V8P0F7JX67ARQ77WEA3D3CFB5XW39REDT0AM";
 const ALEX_POOL_NAME = "amm-pool-v2-01";
