@@ -1,5 +1,14 @@
 // Shared types for btcfi-yield-scanner
 
+export interface PoolData {
+  zest_sbtc_supply_apy_bps: number | null;
+  alex_sbtc_pool_reserves: { x: bigint; y: bigint } | null;
+  rewards_v8_current_cycle: number | null;
+  rewards_v8_prev_cycle_sbtc_sats: number | null;
+  v2_ready: boolean;
+  errors: string[];
+}
+
 export interface PoolState {
   protocol: "zest" | "zest-v2" | "alex" | "bitflow";
   totalSupply: bigint;
