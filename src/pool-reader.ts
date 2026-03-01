@@ -74,12 +74,16 @@ async function readZestPool(apiUrl: string): Promise<{
     //   total-borrows-stable, total-borrows-variable (separate uint128s)
     //   current-liquidity-rate (Aave-style supply APY in ray units: 1e27 = 100%)
     //   no utilization-rate or available-liquidity fields
-    const hexResult = result.result;     const borrowsStable = extractUintFromClarityTuple(hexResult, "total-borrows-stable") ?? 8000000000;
-    const borrowsVariable = extractUintFromClarityTuple(hexResult, "total-borrows-variable") ?? 6000000000;
+    const hexResult = result.result;     const borrowsStable = extractUintFromClarityTuple(hexResult, "total-borrows-stable");
+    const borrowsVariable = extractUintFromClarityTuple(hexResult, "total-borrows-variable");
+    if (borrowsStable === null || borrowsVariable === null) {
+      console.error("[readZestPool] Failed to extract borrow fields from reserve state tuple");
+      return null;
+    }
     const liquidityRate = extractUintFromClarityTuple(hexResult, "current-liquidity-rate");
     const totalBorrows = borrowsStable + borrowsVariable;     // c38: total-supply NOT in tuple. Get actual deposits via a-token ft-get-supply (TI fix).
     const aTokenAddr = extractPrincipalFromClarityTuple(hexResult, "a-token-address");
-    let totalDeposited = 19000000000;
+    let totalDeposited: number | null = null;
     if (aTokenAddr && aTokenAddr.includes(".")) {       const [aTokContract, aTokName] = aTokenAddr.split(".");
       try {
         const supplyRes = await callReadOnly(apiUrl, aTokContract, aTokName, "ft-get-supply", []);
@@ -88,9 +92,16 @@ async function readZestPool(apiUrl: string): Promise<{
           const supplyCv = hexToCV(supplyHex.startsWith("0x") ? supplyHex.slice(2) : supplyHex);
           const supplyVal = cvToValue(supplyCv, true);           if (typeof supplyVal === "bigint") totalDeposited = Number(supplyVal);
           else if (typeof supplyVal === "number") totalDeposited = supplyVal;
+        } else {
+          console.error("[readZestPool] ft-get-supply call failed for a-token:", aTokenAddr);
         }
-      } catch { /* use fallback */ }
+      } catch (err) {
+        console.error("[readZestPool] Error fetching ft-get-supply for a-token:", aTokenAddr, err);
+      }
+    } else {
+      console.error("[readZestPool] No valid a-token-address in reserve state tuple");
     }
+    if (totalDeposited === null) return null;
     const reservesSats = Math.floor(totalDeposited / 100);
     // Utilization = borrows / a-token total supply (no direct field per TI c38)     const utilBps = totalDeposited > 0 ? Math.floor((totalBorrows / totalDeposited) * 10000) : 7500;
     const utilPct = utilBps / 100;
@@ -102,7 +113,10 @@ async function readZestPool(apiUrl: string): Promise<{
       supplyApyBps = Math.floor((borrowApyBps * utilBps) / 10000);
     }
     return { apy_bps: supplyApyBps, utilization_pct: utilPct, reserves_sats: reservesSats };
-  } catch { return null; }
+  } catch (err) {
+    console.error("[readZestPool] Unexpected error reading Zest pool:", err);
+    return null;
+  }
 }
 // ─── Zest rewards-v8 read ──────────────────────────────────────────────────── // c54: rewards-v8 is LIVE on mainnet (SP4SZE deployer, deployed Feb 17).
 // get-pox-cycle() → current cycle (uint)
@@ -118,7 +132,10 @@ async function readZestPool(apiUrl: string): Promise<{
     const rewardsRes = await callReadOnly(apiUrl, ZEST_V2_DEPLOYER, ZEST_V2_REWARDS, "get-cycle-rewards-ststxbtc", [prevCycleArg]);
     if (!rewardsRes.okay) return null;
     const totalSbtc = extractUintFromClarityTuple(rewardsRes.result, "total-sbtc") ?? 0;     return { current_cycle: currentCycle, prev_cycle_sbtc_sats: Math.floor(totalSbtc / 100) };
-  } catch { return null; }
+  } catch (err) {
+    console.error("[readRewardsV8] Unexpected error reading rewards-v8:", err);
+    return null;
+  }
 }
 // ─── Zest V2 availability probe ──────────────────────────────────────────────
 // c56: Probe contract interface: 200 = V2 deployed, 404 = not yet live. async function checkV2Available(apiUrl: string): Promise<boolean> {
@@ -138,12 +155,20 @@ async function readZestPool(apiUrl: string): Promise<{
       "0x" + Buffer.from(serializeCV(uintCV(ALEX_FACTOR))).toString("hex")];
     const result = await callReadOnly(apiUrl, ALEX_CONTRACT, ALEX_POOL_NAME, "get-pool-details", args);     if (!result.okay) return null;
     const hexResult = result.result;
-    const balance0 = extractUintFromClarityTuple(hexResult, "balance-x") ?? 3000000000;     const balance1 = extractUintFromClarityTuple(hexResult, "balance-y") ?? 2500000000;
+    const balance0 = extractUintFromClarityTuple(hexResult, "balance-x");
+    const balance1 = extractUintFromClarityTuple(hexResult, "balance-y");
+    if (balance0 === null || balance1 === null) {
+      console.error("[readAlexPool] Failed to extract balance-x/balance-y from pool details tuple");
+      return null;
+    }
     const totalLiquidity = balance0 + balance1;
     const alexApyBps = 650;
     const reservesSats = Math.floor(totalLiquidity / 100);
     return { apy_bps: alexApyBps, utilization_pct: 0, reserves_sats: reservesSats };
-  } catch { return null; }
+  } catch (err) {
+    console.error("[readAlexPool] Unexpected error reading ALEX pool:", err);
+    return null;
+  }
 } // ─── Clarity tuple parser ────────────────────────────────────────────────────
 function extractUintFromClarityTuple(hex: string, field: string): number | null {
   // Uses @stacks/transactions hexToCV + cvToValue function extractUintFromClarityTuple(hex: string, field: string): number | null {
@@ -185,6 +210,9 @@ export async function readPoolDataDirect(apiUrl: string): Promise<PoolData | nul
       v2_ready: v2Ready,
       errors: [],
     };
-  } catch { return null; }
+  } catch (err) {
+    console.error("[readPoolDataDirect] Unexpected error reading pool data:", err);
+    return null;
+  }
 }
 // END OF FILE — replace src/pool-reader.ts verbatim. No edits.
